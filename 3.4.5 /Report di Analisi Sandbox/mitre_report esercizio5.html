@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Mapping MITRE ATT&CK — Vidar / Lumma Stealer</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 14mm 20mm 14mm;
+    @bottom-center {
+      content: "Uso interno — Team Detection Engineering / SOC — Pagina " counter(page) " di " counter(pages);
+      font-size: 8pt;
+      color: #888888;
+    }
+  }
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 9.7pt;
+    line-height: 1.45;
+    color: #1a1a1a;
+  }
+  h1 {
+    font-size: 18pt;
+    color: #0b3d5c;
+    margin-bottom: 2px;
+    border-bottom: 3px solid #0b3d5c;
+    padding-bottom: 8px;
+  }
+  .subtitle { font-size: 10pt; color: #555; margin-top: 4px; margin-bottom: 16px; }
+  .meta-box {
+    background: #f2f6f9;
+    border-left: 4px solid #0b3d5c;
+    padding: 8px 14px;
+    margin-bottom: 18px;
+    font-size: 9.5pt;
+  }
+  .meta-box table { border: none; width: 100%; }
+  .meta-box td { border: none; padding: 2px 0; }
+  .meta-box td.label { font-weight: bold; width: 150px; color: #444; }
+  h2 {
+    font-size: 12.5pt;
+    color: #0b3d5c;
+    margin-top: 20px;
+    margin-bottom: 6px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #ccc;
+  }
+  h3 { font-size: 10.8pt; color: #333; margin-top: 12px; margin-bottom: 5px; }
+  p { margin: 5px 0; text-align: justify; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 8px 0 14px 0;
+    font-size: 8.6pt;
+  }
+  th {
+    background: #0b3d5c;
+    color: #fff;
+    text-align: left;
+    padding: 5px 6px;
+  }
+  td {
+    border: 1px solid #dde3e8;
+    padding: 5px 6px;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: #f7f9fb; }
+  code {
+    background: #eef1f4;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 8.3pt;
+  }
+  .tactic-tag {
+    display: inline-block;
+    background: #0b3d5c;
+    color: #fff;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 8pt;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+  .tid {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #0b3d5c;
+  }
+  .killchain {
+    display: flex;
+    justify-content: space-between;
+    margin: 14px 0 18px 0;
+    font-size: 8.2pt;
+  }
+  .kc-step {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    background: #0b3d5c;
+    color: #fff;
+    margin-right: 4px;
+    border-radius: 4px;
+    position: relative;
+  }
+  .kc-step:last-child { margin-right: 0; }
+  .rule-block {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 8.1pt;
+    white-space: pre-wrap;
+    margin: 6px 0 12px 0;
+    page-break-inside: avoid;
+  }
+  .footer-note {
+    margin-top: 20px;
+    font-size: 8.4pt;
+    color: #888;
+    font-style: italic;
+    border-top: 1px solid #ddd;
+    padding-top: 6px;
+  }
+  .section-break { page-break-before: always; }
+  ul, ol { margin: 5px 0; padding-left: 20px; }
+  li { margin: 2px 0; }
+</style>
+</head>
+<body>
+
+<h1>Mapping MITRE ATT&CK</h1>
+<div class="subtitle">Scheda tecnica di Detection Engineering — Catena d'infezione Vidar Loader → Vidar Stealer / Lumma Stealer</div>
+
+<div class="meta-box">
+  <table>
+    <tr><td class="label">Sample analizzato</td><td><code>66bddfcb52736_vidar.exe</code> — MD5: <code>fedb687ed23f77925b35623027f799bb</code></td></tr>
+    <tr><td class="label">Data esecuzione sandbox</td><td>25/08/2024, 22:11 — durata 65s (log osservato fino a t+60s in coda di raccolta)</td></tr>
+    <tr><td class="label">Matrice di riferimento</td><td>MITRE ATT&CK for Enterprise (v15)</td></tr>
+    <tr><td class="label">Destinatario</td><td>SOC / Detection Engineering / Threat Intelligence</td></tr>
+  </table>
+</div>
+
+<h2>1. Kill chain sintetica</h2>
+<div class="killchain">
+  <div class="kc-step">1. Execution<br><span style="font-weight:normal">Loader iniziale</span></div>
+  <div class="kc-step">2. Defense Evasion<br><span style="font-weight:normal">Process injection in RegAsm.exe</span></div>
+  <div class="kc-step">3. Discovery<br><span style="font-weight:normal">Anti-sandbox delay loop</span></div>
+  <div class="kc-step">4. C2<br><span style="font-weight:normal">HTTP/TLS verso Hetzner/Cloudflare</span></div>
+  <div class="kc-step">5. Collection<br><span style="font-weight:normal">Furto credenziali/browser data</span></div>
+  <div class="kc-step">6. Exfiltration<br><span style="font-weight:normal">Invio dati ai C2</span></div>
+  <div class="kc-step">7. Cleanup<br><span style="font-weight:normal">Autocancellazione</span></div>
+</div>
+
+<h2>2. Mapping dettagliato tecniche ATT&CK</h2>
+<table>
+  <tr><th style="width:11%">Tattica</th><th style="width:9%">ID</th><th style="width:22%">Tecnica</th><th>Evidenza osservata nel sample</th></tr>
+
+  <tr>
+    <td><span class="tactic-tag">Execution</span></td>
+    <td class="tid">T1204.002</td>
+    <td>User Execution: Malicious File</td>
+    <td>Esecuzione manuale/iniziale di <code>66bddfcb52736_vidar.exe</code> in ambiente sandbox (simula doppio click utente / esecuzione da archivio scaricato).</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Defense Evasion</span><br><span class="tactic-tag">Execution</span></td>
+    <td class="tid">T1218.010</td>
+    <td>System Binary Proxy Execution: Regsvcs/Regasm</td>
+    <td>Il payload viene eseguito/iniettato tramite <code>RegAsm.exe</code> (PID 6908, 4704, 6340), binario Microsoft firmato — usato per eludere controlli basati su reputazione/firma.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Defense Evasion</span></td>
+    <td class="tid">T1055</td>
+    <td>Process Injection</td>
+    <td>Comportamento di iniezione in processo legittimo osservato tramite l'albero processi (RegAsm.exe come host dei moduli Vidar/Lumma) — confermato da tag "vidar"/"lumma" associati al processo RegAsm e non al processo loader originale.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Defense Evasion</span></td>
+    <td class="tid">T1027</td>
+    <td>Obfuscated Files or Information</td>
+    <td>File droppati in <code>C:\ProgramData\FHJDBKJKFIEC\</code> con nomi a 6 caratteri casuali (<code>EBAKFI</code>, <code>IECFIE</code>, <code>FIJJKE</code>, <code>EGIJEB</code>, <code>CBAFID</code>, <code>KJJECG</code>, <code>GCBGCG</code>, <code>CGHCGI</code>, <code>JECBGC</code>, <code>AFBKKF</code>, <code>KKECFI</code>, <code>CFHIIJ</code>, <code>JEGDGI</code>) senza estensione riconoscibile, di tipo "binary"/"sqlite"/"text" — payload e dati offuscati/cifrati a runtime.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Defense Evasion</span></td>
+    <td class="tid">T1036</td>
+    <td>Masquerading</td>
+    <td>Eseguibili droppati con nomi generici/casuali (<code>HCAEHJJKFC.exe</code>, <code>CAFHDBGHJK.exe</code>) in <code>ProgramData</code>, cartella comunemente usata da software legittimo, per confondersi con l'ambiente.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Defense Evasion</span></td>
+    <td class="tid">T1574.002</td>
+    <td>Hijack Execution Flow: DLL Side-Loading</td>
+    <td>Drop di DLL legittime del runtime Mozilla/NSS (<code>freebl3.dll</code>, <code>mozglue.dll</code>, <code>msvcp140.dll</code>, <code>softokn3.dll</code>, <code>vcruntime140.dll</code>, <code>nss3.dll</code>) accanto ai binari malevoli — set tipico usato da Vidar per decriptare i dati protetti (DPAPI/NSS) dei browser Gecko-based.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Discovery</span></td>
+    <td class="tid">T1497.003</td>
+    <td>Virtualization/Sandbox Evasion: Time Based Evasion</td>
+    <td>Scrittura ripetuta e ciclica del file <code>C:\Users\admin\AppData\Local\Temp\delays.tmp</code> (decine di riscritture da 1024 Kb, cadenza ~1s) — pattern classico di sleep/delay loop per eludere l'analisi automatizzata a tempo limitato.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Command and Control</span></td>
+    <td class="tid">T1071.001</td>
+    <td>Application Layer Protocol: Web Protocols</td>
+    <td>Comunicazione C2 su HTTP/HTTPS (porta 443/80) verso <code>195.201.118.191</code> (Hetzner) e <code>172.67.215.62</code> / <code>caffegclasiqwp.shop</code> (Cloudflare) — traffico persistente e voluminoso, fino a 2 Mb per singola risposta.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Command and Control</span></td>
+    <td class="tid">T1105</td>
+    <td>Ingress Tool Transfer</td>
+    <td>Download di ulteriori eseguibili via HTTP da IP nudo: <code>hxxp://147.45.44.104/prog/66cb2df8bd684_lawrng.exe</code> (321 Kb) e <code>hxxp://147.45.44.104/prog/66cb2df1d4a01_vakerk.exe</code> (193 Kb) — comportamento da loader multi-stage.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Command and Control</span></td>
+    <td class="tid">T1568.002</td>
+    <td>Dynamic Resolution: Domain Generation Algorithm / Dynamic DNS</td>
+    <td>Risoluzione di <code>arpdabl.zapto.org</code>, dominio DynDNS (No-IP/Zapto) — tipico fallback C2 per resistere al take-down.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Command and Control</span></td>
+    <td class="tid">T1102</td>
+    <td>Web Service (Dead Drop Resolver — sospetto)</td>
+    <td>Connessione verso <code>steamcommunity.com</code> con richiesta di una pagina profilo (<code>76561199751190313[1].htm</code> salvata in cache IE) — pattern coerente con l'uso di profili Steam come dead-drop resolver per la configurazione C2, tecnica nota di Vidar.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Credential Access</span><br><span class="tactic-tag">Collection</span></td>
+    <td class="tid">T1555.003</td>
+    <td>Credentials from Password Stores: Credentials from Web Browsers</td>
+    <td>Presenza delle DLL NSS/Gecko sopra citate + comportamento noto della famiglia Vidar/Lumma: furto di password, cookie e dati di autofill salvati nei browser Chromium/Firefox-based.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Collection</span></td>
+    <td class="tid">T1560</td>
+    <td>Archive Collected Data</td>
+    <td>File <code>C:\ProgramData\FHJDBKJKFIEC\AFBKKF</code> (256 Kb, tipo sqlite) e <code>KKECFI</code> (5 Mb, "Oversized") coerenti con raccolta/archiviazione locale dei dati rubati prima dell'invio ai C2.</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Exfiltration</span></td>
+    <td class="tid">T1041</td>
+    <td>Exfiltration Over C2 Channel</td>
+    <td>I dati raccolti vengono presumibilmente inviati tramite lo stesso canale HTTPS usato per il C2 (Hetzner/Cloudflare) — coerente con l'allarme dedicato "Lumma Stealer TLS Connection".</td>
+  </tr>
+
+  <tr>
+    <td><span class="tactic-tag">Defense Evasion</span></td>
+    <td class="tid">T1070.004</td>
+    <td>Indicator Removal: File Deletion</td>
+    <td>Comando osservato: <code>cmd.exe /c timeout /t 10 & rd /s /q "C:\ProgramData\FHJDBKJKFIEC" & exit</code> — autocancellazione della cartella di staging al termine dell'esecuzione, per rimuovere le tracce forensi su disco.</td>
+  </tr>
+
+</table>
+
+<div class="section-break"></div>
+
+<h2>3. Indicatori di Compromissione (IOC) — pronti per l'ingest</h2>
+
+<h3>3.1 Hash</h3>
+<table>
+  <tr><th style="width:20%">Tipo</th><th style="width:35%">Valore</th><th>Contesto</th></tr>
+  <tr><td>MD5</td><td><code>fedb687ed23f77925b35623027f799bb</code></td><td>Sample principale — Vidar Loader (<code>66bddfcb52736_vidar.exe</code>)</td></tr>
+</table>
+
+<h3>3.2 Indirizzi IP</h3>
+<table>
+  <tr><th style="width:22%">IP</th><th style="width:20%">ASN / Hosting</th><th style="width:15%">Porta</th><th>Ruolo</th></tr>
+  <tr><td><code>147.45.44.104</code></td><td>OOO FREEnet Group (RU)</td><td>80</td><td>Staging server — hosting payload aggiuntivi (lawrng.exe, vakerk.exe)</td></tr>
+  <tr><td><code>195.201.118.191</code></td><td>Hetzner Online GmbH</td><td>443</td><td>C2 primario — traffico persistente RegAsm.exe</td></tr>
+  <tr><td><code>172.67.215.62</code> / <code>104.21.16.180</code></td><td>Cloudflare (proxy)</td><td>443</td><td>C2 secondario — Lumma Stealer TLS (dietro CDN)</td></tr>
+  <tr><td><code>arpdabl.zapto.org</code> → <code>0.0.0.0</code></td><td>DynDNS (No-IP/Zapto)</td><td>—</td><td>Dominio C2 dinamico, risolto ma non responsivo al momento dell'analisi (sinkhole/down)</td></tr>
+</table>
+
+<h3>3.3 Domini</h3>
+<table>
+  <tr><th style="width:35%">Dominio</th><th>Ruolo</th></tr>
+  <tr><td><code>caffegclasiqwp.shop</code></td><td>Dominio C2 Lumma Stealer, fronted via Cloudflare</td></tr>
+  <tr><td><code>arpdabl.zapto.org</code></td><td>Dominio DynDNS di fallback</td></tr>
+</table>
+
+<h3>3.4 URL di download payload</h3>
+<table>
+  <tr><th style="width:70%">URL</th><th>Dimensione</th></tr>
+  <tr><td><code>hxxp://147.45.44.104/prog/66cb2df8bd684_lawrng.exe</code></td><td>321 Kb</td></tr>
+  <tr><td><code>hxxp://147.45.44.104/prog/66cb2df1d4a01_vakerk.exe</code></td><td>193 Kb</td></tr>
+</table>
+
+<h3>3.5 Path e artefatti su filesystem</h3>
+<table>
+  <tr><th style="width:60%">Path</th><th>Note</th></tr>
+  <tr><td><code>C:\ProgramData\FHJDBKJKFIEC\</code></td><td>Cartella di staging — nome a 12 caratteri casuali (pattern dinamico, non affidabile come IOC statico tra campioni diversi)</td></tr>
+  <tr><td><code>C:\ProgramData\HCAEHJJKFC.exe</code></td><td>Payload droppato #1</td></tr>
+  <tr><td><code>C:\ProgramData\CAFHDBGHJK.exe</code></td><td>Payload droppato #2</td></tr>
+  <tr><td><code>C:\Users\[user]\AppData\Local\Temp\delays.tmp</code></td><td>File di sleep/anti-sandbox — riscritto ciclicamente</td></tr>
+  <tr><td><code>C:\ProgramData\{freebl3,mozglue,msvcp140,softokn3,vcruntime140,nss3}.dll</code></td><td>Set di DLL NSS legittime, usato per decriptare i dati browser Gecko-based (side-loading)</td></tr>
+</table>
+
+<h2>4. Regole di detection consigliate (pseudocodice / Sigma-like)</h2>
+
+<div class="rule-block">title: Process Injection via RegAsm.exe with network activity
+logsource: category=process_creation, product=windows
+detection:
+  selection_process:
+    Image|endswith: '\RegAsm.exe'
+    ParentImage|endswith:
+      - '\explorer.exe'
+      - '\cmd.exe'
+      - '\*.exe'   # loader non standard, non lanciato da Visual Studio/regasm legittimo
+  selection_network:
+    Image|endswith: '\RegAsm.exe'
+    DestinationPort: [443, 80]
+  condition: selection_process and selection_network
+level: high
+falsepositives:
+  - Sviluppo .NET legittimo che registra assembly COM (raro in ambiente utente finale)</div>
+
+<div class="rule-block">title: Suspicious ProgramData staging folder with random name
+logsource: category=file_event, product=windows
+detection:
+  selection:
+    TargetFilename|contains: '\ProgramData\'
+    TargetFilename|re: '\\ProgramData\\[A-Z]{10,14}\\[A-Z]{6}$'
+  condition: selection
+level: medium
+note: Pattern di naming casuale in maiuscolo tipico di builder Vidar/Lumma recenti</div>
+
+<div class="rule-block">title: Executable download from bare IP address over HTTP
+logsource: category=network_connection, product=windows
+detection:
+  selection:
+    dest_port: 80
+    http.uri|endswith: '.exe'
+    dest_ip|re: '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'   # host = IP letterale, non FQDN
+  condition: selection
+level: high
+mitre: T1105</div>
+
+<h2>5. Priorità di implementazione per il team</h2>
+<table>
+  <tr><th style="width:10%">Priorità</th><th style="width:35%">Azione</th><th>Effort stimato</th></tr>
+  <tr><td>🔴 Alta</td><td>Blacklist IOC (hash, IP, domini) su EDR/Firewall/Proxy — vedi sezione 3</td><td>Basso — import diretto liste</td></tr>
+  <tr><td>🔴 Alta</td><td>Regola di detection su iniezione/rete anomala da RegAsm.exe</td><td>Medio — richiede tuning per evitare falsi positivi su sviluppo .NET legittimo</td></tr>
+  <tr><td>🟠 Media</td><td>Regola su download .exe da IP letterale via HTTP</td><td>Basso — pattern generico riutilizzabile per altre famiglie</td></tr>
+  <tr><td>🟡 Bassa</td><td>Detection su naming casuale in ProgramData</td><td>Medio — alto rumore, da usare come segnale di correlazione, non standalone</td></tr>
+</table>
+
+<div class="footer-note">
+Scheda tecnica a supporto del Report Incidente per il Management (documento separato). Fonte: analisi sandbox ANY.RUN del 25/08/2024. Da aggiornare con eventuali nuovi IOC in caso di ulteriori campioni della stessa campagna.
+</div>
+
+</body>
+</html>
